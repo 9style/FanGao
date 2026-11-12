@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#080e19">
+    <meta name="description" content="星夜回声：当梵高的星流遇见未来的全息女孩。一幅可以触碰、可以唤醒的交互艺术作品。">
+    <title>星夜回声 · Starry Echo</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23080e19'/%3E%3Cpath d='M20 5 24 16 35 20 24 24 20 35 16 24 5 20 16 16Z' fill='%23dab879'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/src/style.css">
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="icon-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="icon-pause" viewBox="0 0 24 24"><path d="M9 6v12M15 6v12" stroke-width="2.5"/></symbol>
+      <symbol id="icon-sound" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
+      <symbol id="icon-muted" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4Zm5 4 5 6m0-6-5 6"/></symbol>
+      <symbol id="icon-fullscreen" viewBox="0 0 24 24"><path d="M9 4H4v5m11-5h5v5M4 15v5h5m6 0h5v-5"/></symbol>
+      <symbol id="icon-reset" viewBox="0 0 24 24"><path d="M5 9a8 8 0 1 1-1 5M5 4v5h5"/></symbol>
+      <symbol id="icon-star" viewBox="0 0 24 24"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4Z"/></symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+      <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-5-5 5 5-5 5"/></symbol>
+    </svg>
+
+    <main class="experience" aria-label="星夜回声交互艺术">
+      <canvas id="artwork" tabindex="0" aria-label="全息女孩与星夜画布。拖动或方向键环绕，滚轮或加减键缩放，右键或 Shift 拖动平移；触屏单指环绕、双指缩放平移。点击或回车释放涟漪，空格暂停，Home 恢复构图。" data-ripples="0"></canvas>
+      <div class="scene-shade" aria-hidden="true"></div>
+      <div class="frame-line" aria-hidden="true"></div>
+
+      <header class="masthead">
+        <a class="brand" href="/" aria-label="星夜回声首页">
+          <span class="brand-emblem" aria-hidden="true">
+            <svg viewBox="0 0 40 40"><path d="m20 3 3.8 13.2L37 20l-13.2 3.8L20 37l-3.8-13.2L3 20l13.2-3.8Z"/><circle cx="20" cy="20" r="12"/></svg>
+          </span>
+          <span class="brand-wordmark">STARRY ECHO<span>星 夜 回 声</span></span>
+        </a>
+        <div class="header-center" aria-hidden="true">AN EXPERIMENT IN LIGHT & MEMORY</div>
+        <nav class="header-actions" aria-label="作品选项">
+          <button id="sound" class="icon-button" type="button" aria-label="开启环境音" aria-pressed="false" title="开启环境音">
+            <svg class="icon"><use href="#icon-muted"/></svg>
+          </button>
+          <button id="fullscreen" class="icon-button" type="button" aria-label="进入全屏" title="进入全屏">
+            <svg class="icon"><use href="#icon-fullscreen"/></svg>
+          </button>
+          <span class="header-divider" aria-hidden="true"></span>
+          <button id="about" class="about-button" type="button">关于作品 <span aria-hidden="true">↗</span></button>
+        </nav>
+      </header>
+
+      <section class="editorial" aria-labelledby="artwork-title">
+        <div class="eyebrow"><span class="small-line"></span>WHERE ART MEETS THE IMPOSSIBLE</div>
+        <h1 id="artwork-title">星夜，<br>为你<span class="title-accent">而流。</span></h1>
+        <p class="english-title">Somewhere between<br>a memory and a dream.</p>
+        <p class="intro">一束来自未来的光，<br>落进了 1889 年的夜空。</p>
+        <div class="artwork-signature">
+          <span class="signature-line"></span>
+          <span>VAN GOGH <span class="signature-cross">×</span> HOLOGRAPHIC FUTURES</span>
+        </div>
+      </section>
+
+      <aside class="specimen-note" aria-label="全息投影状态">
+        <span class="specimen-index">N° 079</span>
+        <span class="specimen-label">A LIVING CANVAS</span>
+        <span class="specimen-rule"></span>
+        <span class="signal"><i></i><span id="signal-status">SIGNAL / STABLE</span></span>
+      </aside>
+
+      <div class="figure-caption" aria-hidden="true">
+        <span class="caption-cross">+</span>
+        <span>她不是幻影。<br><span>只是星光的另一种形状。</span></span>
+      </div>
+
+      <div id="loading" class="loading" role="status">
+        <span class="loading-orbit" aria-hidden="true"></span>
+        <span>正在唤醒这片星空<span>BRINGING LIGHT TO LIFE</span></span>
+      </div>
+
+      <div id="notice" class="notice" role="status" aria-live="polite"></div>
+
+      <section class="view-toolbar" aria-label="三维观察控制">
+        <button id="free-view" class="view-mode" type="button" aria-pressed="false" title="切换自由观察 / 原始构图">
+          <span aria-hidden="true">◎</span> 自由观察
+        </button>
+        <span class="view-divider" aria-hidden="true"></span>
+        <div class="view-presets" role="group" aria-label="预设视角">
+          <button id="view-front" type="button" aria-pressed="false">正面</button>
+          <button id="view-side" type="button" aria-pressed="false">侧面</button>
+          <button id="view-back" type="button" aria-pressed="false">背面</button>
+          <button id="view-face" type="button" aria-pressed="false">特写</button>
+        </div>
+        <span class="view-divider" aria-hidden="true"></span>
+        <button id="view-home" type="button" title="只恢复视角，保留当前效果 / Home">恢复构图</button>
+      </section>
+
+      <section class="control-dock" aria-label="艺术效果控制">
+        <button id="pause" class="play-button" type="button" aria-label="暂停动画" aria-pressed="false" title="暂停 / 空格">
+          <svg class="icon"><use href="#icon-pause"/></svg>
+        </button>
+        <span class="dock-divider" aria-hidden="true"></span>
+        <div class="slider-control">
+          <div class="slider-heading"><label for="flow">星流 <span>FLOW</span></label><output id="flow-value" for="flow">65</output></div>
+          <input id="flow" type="range" min="0" max="100" value="65" aria-label="星流强度" style="--fill:65%">
+        </div>
+        <div class="slider-control">
+          <div class="slider-heading"><label for="hologram">全息 <span>LIGHT</span></label><output id="hologram-value" for="hologram">72</output></div>
+          <input id="hologram" type="range" min="0" max="100" value="72" aria-label="全息强度" style="--fill:72%">
+        </div>
+        <span class="dock-divider palette-divider" aria-hidden="true"></span>
+        <button id="palette" class="palette-button" type="button" aria-label="切换到霓虹色板" aria-pressed="false" title="切换色板">
+          <span class="palette-swatch" aria-hidden="true"><i></i><i></i></span>
+          <span id="palette-label">星夜色板<span>STARRY NIGHT</span></span>
+        </button>
+        <button id="reset" class="icon-button reset-button" type="button" aria-label="重置场景" title="重置 / R">
+          <svg class="icon"><use href="#icon-reset"/></svg>
+        </button>
+      </section>
+
+      <footer class="scene-footer">
+        <div class="edition"><span class="edition-number">01</span><span>THE IMPOSSIBLE COLLECTION<span>A DIGITAL ART STUDY · 2026</span></span></div>
+        <div class="interaction-hint">
+          <span class="hint-orbit" aria-hidden="true"></span>
+          <span><span class="hint-desktop">拖动环绕 <i>·</i> 滚轮缩放 <i>·</i> 右键平移</span><span class="hint-touch">单指环绕 <i>·</i> 双指缩放与平移</span><span class="hint-english">CLICK TO RESONATE · HOME TO RETURN</span></span>
+        </div>
+        <div class="particle-note"><span id="particle-count">30,000</span> PARTICLES<span>ONE FLEETING MOMENT</span></div>
+      </footer>
+    </main>
+
+    <dialog id="about-dialog" aria-labelledby="about-title">
+      <button id="close-about" class="icon-button dialog-close" type="button" aria-label="关闭作品介绍"><svg class="icon"><use href="#icon-close"/></svg></button>
+      <div class="eyebrow">NOT QUITE REAL. NOT QUITE A DREAM.</div>
+      <h2 id="about-title">把未来，<br>画进星夜。</h2>
+      <p>《星夜回声》是一项交互艺术实验：让《银翼杀手 2049》中 Joi 的全息视觉语言，与梵高《星月夜》的蓝色旋涡和金色笔触相遇。</p>
+      <dl class="about-details">
+        <div><dt>自由观察</dt><dd>左键拖动 360° 环绕，上下拖动俯仰，滚轮缩放；右键或 Shift＋拖动平移。手机单指环绕，双指缩放和平移。视角栏支持正面、侧面、背面与面部特写。</dd></div>
+        <div><dt>触碰星空</dt><dd>移动鼠标扰动粒子；点击或轻触释放涟漪。普通拖动保留构图与文案；点击“自由观察”或预设视角才居中并淡出标题。恢复构图只还原相机，保留色板、强度和暂停状态。</dd></div>
+        <div><dt>键盘漫游</dt><dd>画布聚焦后，方向键环绕，Shift＋方向键平移，加减键缩放，回车释放涟漪，Home 恢复构图。空格暂停 / 继续，R 重置全部。</dd></div>
+        <div><dt>聆听夜色</dt><dd>右上角开启本地合成的环境音。没有音频下载，也不会自动播放。</dd></div>
+      </dl>
+      <div class="credits">
+        <span class="credits-label">BEHIND THE CANVAS</span>
+        <p>人物为原创程序化 3D 雕塑，并非演员肖像或下载的 GLB。WebGL 实时渲染表面笔触、菲涅尔光晕、扫描线、流场与 Bloom；所有视觉与声音均在本地生成。</p>
+        <p>当前制作环境无法访问外网，因此未获取网络参考图片或模型。下方提供原作资料入口，不代表已经抓取这些网站的素材。</p>
+        <div class="reference-links">
+          <a href="https://www.moma.org/collection/works/79802" target="_blank" rel="noopener noreferrer">The Starry Night · MoMA ↗</a>
+          <a href="https://en.wikipedia.org/wiki/Blade_Runner_2049" target="_blank" rel="noopener noreferrer">Blade Runner 2049 ↗</a>
+        </div>
+      </div>
+      <div class="dialog-footnote">MADE OF MATH, LIGHT, AND A LITTLE LONGING.</div>
+    </dialog>
+    <noscript><div class="noscript-message">这幅交互作品需要 JavaScript。请启用 JavaScript 后重新打开。</div></noscript>
+  </body>
+</html>

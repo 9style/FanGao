@@ -1,0 +1,16 @@
+{
+  "name": "starry-echo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "An offline, interactive holographic sculpture in a living starry sky.",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
+    "test": "node --test tests/core.test.mjs tests/lifecycle.test.mjs tests/camera.test.mjs",
+    "test:browser": "node tests/browser.test.mjs && node tests/view.browser.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
