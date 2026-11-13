@@ -2,6 +2,7 @@ import { createRandom } from './math.js';
 import { cameraFrame, createView, projectToScreen, screenToWorld } from './camera.js';
 import { createFigure, sampleSurface } from './geometry.js';
 import { createFallback } from './fallback.js';
+import { isNarrowLayout } from './device.js';
 import {
   fullscreenVertex, backgroundFragment, hologramVertex, hologramFragment,
   brushVertex, brushFragment, bloomFragment, compositeFragment,
@@ -56,14 +57,20 @@ export function createRenderer(canvas, state) {
   let frame;
   let backdropFrame;
   let offset = [1.65, 0];
-  const narrow = () => innerWidth < 700;
+  const narrow = () => isNarrowLayout();
   const lowPower = navigator.hardwareConcurrency > 0 && navigator.hardwareConcurrency <= 4;
   const figure = createFigure();
   const sampleCount = narrow() || lowPower ? 11500 : 19500;
   const figureSamples = sampleSurface(figure.meshes, sampleCount, 79);
   const flowSamples = createFlowParticles(narrow() || lowPower ? 4800 : 10500);
   const ringSamples = createRingParticles(1350);
-  const info = { engine: 'webgl', particles: sampleCount + flowSamples.positions.length / 3, meshes: figure.meshes.length };
+  const info = {
+    engine: 'webgl',
+    particles: sampleCount + flowSamples.positions.length / 3,
+    meshes: figure.meshes.length,
+    contextAttributes: gl.getContextAttributes(),
+    firstGlError: null,
+  };
 
   function program(vertexSource, fragmentSource) {
     const compiled = [];
@@ -141,7 +148,25 @@ export function createRenderer(canvas, state) {
   const ringParticles = particleMesh(ringSamples);
   gl.bindVertexArray(null);
 
-  function target(depth = false) {
+  // 探测用最小着色器与几何：验证帧缓冲不仅"声明完整"，而且真正可清除、可绘制
+  const probeProgram = program(`#version 300 es
+in vec2 p;
+void main() { gl_Position = vec4(p, 0.0, 1.0); }`, `#version 300 es
+precision highp float;
+out vec4 o;
+void main() { o = vec4(1.0); }`);
+  const probeVao = gl.createVertexArray();
+  resources.push(['vertexArray', probeVao]);
+  gl.bindVertexArray(probeVao);
+  const probeBuffer = gl.createBuffer();
+  resources.push(['buffer', probeBuffer]);
+  gl.bindBuffer(gl.ARRAY_BUFFER, probeBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  gl.bindVertexArray(null);
+
+  function target(name, depth = false) {
     const texture = gl.createTexture();
     const framebuffer = gl.createFramebuffer();
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -151,30 +176,129 @@ export function createRenderer(canvas, state) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-    let depthBuffer = null;
-    if (depth) {
-      depthBuffer = gl.createRenderbuffer();
-      gl.bindRenderbuffer(gl.RENDERBUFFER, depthBuffer);
-      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthBuffer);
-      resources.push(['renderbuffer', depthBuffer]);
-    }
     resources.push(['texture', texture], ['framebuffer', framebuffer]);
-    return { texture, framebuffer, depthBuffer };
+    return {
+      name, texture, framebuffer, wantsDepth: depth, hasDepth: false,
+      depthRenderbuffer: null, depthTexture: null,
+      chosenColor: null, chosenDepth: null, attempts: [],
+    };
   }
 
-  const sceneTarget = target(true);
-  const firstBloom = target();
-  const secondBloom = target();
+  const sceneTarget = target('scene', true);
+  const firstBloom = target('bloom-a');
+  const secondBloom = target('bloom-b');
+
+  const framebufferStatusName = status => ({
+    [gl.FRAMEBUFFER_COMPLETE]: 'COMPLETE',
+    [gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT]: 'INCOMPLETE_ATTACHMENT',
+    [gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT]: 'INCOMPLETE_MISSING_ATTACHMENT',
+    [gl.FRAMEBUFFER_INCOMPLETE_DIMENSIONS]: 'INCOMPLETE_DIMENSIONS',
+    [gl.FRAMEBUFFER_INCOMPLETE_MULTISAMPLE]: 'INCOMPLETE_MULTISAMPLE',
+    [gl.FRAMEBUFFER_UNSUPPORTED]: 'UNSUPPORTED',
+  })[status] || `UNKNOWN_${status}`;
+
+  // 个别移动 GPU 驱动（Adreno + 厂商浏览器内核）状态检查返回完整，实际 clear/draw 却报
+  // INVALID_FRAMEBUFFER_OPERATION(1286)。因此同时尝试渲染缓冲、深度纹理与无深度多种组合，
+  // 并以真实操作结果而非状态枚举作为选择依据。
+  const hasFloatDepth = Boolean(gl.getExtension('EXT_color_buffer_float'));
+  function depthModes(wantsDepth) {
+    if (!wantsDepth) return [{ label: 'none' }];
+    const modes = [
+      { label: 'RB:DEPTH_COMPONENT16', kind: 'renderbuffer', format: gl.DEPTH_COMPONENT16, attachment: gl.DEPTH_ATTACHMENT },
+      { label: 'RB:DEPTH_COMPONENT24', kind: 'renderbuffer', format: gl.DEPTH_COMPONENT24, attachment: gl.DEPTH_ATTACHMENT },
+      { label: 'RB:DEPTH24_STENCIL8', kind: 'renderbuffer', format: gl.DEPTH24_STENCIL8, attachment: gl.DEPTH_STENCIL_ATTACHMENT },
+    ];
+    if (hasFloatDepth) {
+      modes.push({ label: 'RB:DEPTH_COMPONENT32F', kind: 'renderbuffer', format: gl.DEPTH_COMPONENT32F, attachment: gl.DEPTH_ATTACHMENT });
+    }
+    modes.push(
+      { label: 'TEX:DEPTH_COMPONENT24', kind: 'texture', format: gl.DEPTH_COMPONENT24, type: gl.UNSIGNED_INT },
+      { label: 'TEX:DEPTH_COMPONENT16', kind: 'texture', format: gl.DEPTH_COMPONENT16, type: gl.UNSIGNED_SHORT },
+      { label: 'none' },
+    );
+    return modes;
+  }
+
+  function detachDepth(renderTarget) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, renderTarget.framebuffer);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, null);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, null);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, null, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.TEXTURE_2D, null, 0);
+  }
 
   function allocate(renderTarget, targetWidth, targetHeight) {
-    gl.bindTexture(gl.TEXTURE_2D, renderTarget.texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, targetWidth, targetHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    if (renderTarget.depthBuffer) {
-      gl.bindRenderbuffer(gl.RENDERBUFFER, renderTarget.depthBuffer);
-      gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, targetWidth, targetHeight);
+    renderTarget.attempts = [];
+    const modes = depthModes(renderTarget.wantsDepth);
+    for (const colorFormat of [gl.RGBA8, gl.RGBA]) {
+      const colorLabel = colorFormat === gl.RGBA8 ? 'RGBA8' : 'RGBA';
+      gl.bindTexture(gl.TEXTURE_2D, renderTarget.texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, colorFormat, targetWidth, targetHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      for (const mode of modes) {
+        detachDepth(renderTarget);
+        if (mode.kind === 'renderbuffer') {
+          if (!renderTarget.depthRenderbuffer) {
+            renderTarget.depthRenderbuffer = gl.createRenderbuffer();
+            resources.push(['renderbuffer', renderTarget.depthRenderbuffer]);
+          }
+          gl.bindRenderbuffer(gl.RENDERBUFFER, renderTarget.depthRenderbuffer);
+          gl.renderbufferStorage(gl.RENDERBUFFER, mode.format, targetWidth, targetHeight);
+          gl.framebufferRenderbuffer(gl.FRAMEBUFFER, mode.attachment, gl.RENDERBUFFER, renderTarget.depthRenderbuffer);
+        } else if (mode.kind === 'texture') {
+          if (!renderTarget.depthTexture) {
+            renderTarget.depthTexture = gl.createTexture();
+            resources.push(['texture', renderTarget.depthTexture]);
+            gl.bindTexture(gl.TEXTURE_2D, renderTarget.depthTexture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          } else {
+            gl.bindTexture(gl.TEXTURE_2D, renderTarget.depthTexture);
+          }
+          gl.texImage2D(gl.TEXTURE_2D, 0, mode.format, targetWidth, targetHeight, 0, gl.DEPTH_COMPONENT, mode.type, null);
+          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, renderTarget.depthTexture, 0);
+        }
+        const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+        let opError = 0;
+        let probePixel = null;
+        let pixelOk = false;
+        if (status === gl.FRAMEBUFFER_COMPLETE) {
+          // 实测可渲染性：部分驱动状态返回完整、getError 也为 0，却静默丢弃所有绘制导致整帧黑屏。
+          // 因此画白色三角形后必须 readPixels 回读，确认像素真正写入才算可用组合。
+          gl.viewport(0, 0, targetWidth, targetHeight);
+          gl.disable(gl.BLEND);
+          gl.disable(gl.DEPTH_TEST);
+          gl.clearColor(0, 0, 0, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT | (mode.label === 'none' ? 0 : gl.DEPTH_BUFFER_BIT));
+          gl.useProgram(probeProgram.handle);
+          gl.bindVertexArray(probeVao);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+          probePixel = new Uint8Array(4);
+          gl.readPixels(
+            Math.max(0, Math.floor(targetWidth / 2)),
+            Math.max(0, Math.floor(targetHeight / 2)),
+            1, 1, gl.RGBA, gl.UNSIGNED_BYTE, probePixel,
+          );
+          opError = gl.getError();
+          gl.bindVertexArray(null);
+          pixelOk = opError === 0 && probePixel[0] > 200 && probePixel[1] > 200 && probePixel[2] > 200;
+        }
+        renderTarget.attempts.push(
+          `${colorLabel}+${mode.label} => ${framebufferStatusName(status)}`
+          + `${status === gl.FRAMEBUFFER_COMPLETE ? ` / opError=${opError} / px=${probePixel ? Array.from(probePixel).join(',') : 'n/a'} / ${pixelOk ? 'USABLE' : 'DEAD'}` : ''}`,
+        );
+        if (status === gl.FRAMEBUFFER_COMPLETE && opError === 0 && pixelOk) {
+          renderTarget.hasDepth = mode.label !== 'none';
+          renderTarget.chosenColor = colorLabel;
+          renderTarget.chosenDepth = mode.label;
+          return;
+        }
+      }
     }
-    gl.bindFramebuffer(gl.FRAMEBUFFER, renderTarget.framebuffer);
-    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('Projection framebuffer is incomplete.');
+    throw new Error(
+      `Projection framebuffer "${renderTarget.name}" (${targetWidth}x${targetHeight}) has no usable configuration. Attempts: ${renderTarget.attempts.join('; ')}`,
+    );
   }
 
   function resize() {
@@ -186,9 +310,23 @@ export function createRenderer(canvas, state) {
     canvas.height = height;
     bloomWidth = Math.max(1, Math.floor(width / 4));
     bloomHeight = Math.max(1, Math.floor(height / 4));
-    allocate(sceneTarget, width, height);
-    allocate(firstBloom, bloomWidth, bloomHeight);
-    allocate(secondBloom, bloomWidth, bloomHeight);
+    try {
+      allocate(sceneTarget, width, height);
+      allocate(firstBloom, bloomWidth, bloomHeight);
+      allocate(secondBloom, bloomWidth, bloomHeight);
+    } catch (error) {
+      // 个别驱动在高分辨率下拒绝帧缓冲：降低渲染分辨率后整体重试，仍失败则交给上层降级到 2D
+      if (resolutionScale <= 0.3) throw error;
+      resolutionScale = Math.max(0.25, resolutionScale * 0.5);
+      resize();
+      return;
+    }
+    info.framebuffers = {
+      scene: { config: `${sceneTarget.chosenColor}+${sceneTarget.chosenDepth}`, attempts: sceneTarget.attempts },
+      'bloom-a': { config: `${firstBloom.chosenColor}+${firstBloom.chosenDepth}`, attempts: firstBloom.attempts },
+      'bloom-b': { config: `${secondBloom.chosenColor}+${secondBloom.chosenDepth}`, attempts: secondBloom.attempts },
+    };
+    info.backingStore = { width, height, resolutionScale };
     backdropFrame = cameraFrame(createView(), canvas.clientWidth, canvas.clientHeight);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
@@ -202,7 +340,7 @@ export function createRenderer(canvas, state) {
     scalar(activeProgram, 'uTime', time);
     scalar(activeProgram, 'uFlow', state.flow / 65);
     scalar(activeProgram, 'uHologram', state.hologram / 100);
-    scalar(activeProgram, 'uPalette', state.palette);
+    scalar(activeProgram, 'uPalette', state.paletteBlend ?? state.palette);
     scalar(activeProgram, 'uYaw', 0);
     gl.uniform2fv(activeProgram.uniform('uOffset'), offset);
     gl.uniform2fv(activeProgram.uniform('uResolution'), [width, height]);
@@ -231,6 +369,16 @@ export function createRenderer(canvas, state) {
     gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, mesh.count);
   }
 
+  // 首帧分段记录 GL 错误，定位驱动具体拒绝了哪一步
+  function checkpoint(stage) {
+    if (frameCount !== 0) return;
+    const error = gl.getError();
+    if (error !== 0) {
+      info.firstFrameErrors = info.firstFrameErrors || [];
+      info.firstFrameErrors.push({ stage, error });
+    }
+  }
+
   function render(time, interaction) {
     if (lost || disposed) return;
     frame = cameraFrame(interaction.view, canvas.clientWidth, canvas.clientHeight);
@@ -250,7 +398,8 @@ export function createRenderer(canvas, state) {
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.BLEND);
     gl.clearColor(0, 0, 0, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT | (sceneTarget.hasDepth ? gl.DEPTH_BUFFER_BIT : 0));
+    checkpoint('scene-clear');
 
     common(background, time, interaction);
     scalar(background, 'uAspect', width / height);
@@ -260,6 +409,7 @@ export function createRenderer(canvas, state) {
       (rippleScreen[0] - 0.5) * width / height * 8.8, (rippleScreen[1] - 0.5) * 8.8, interaction.ripple[3],
     ]);
     fullscreen(background, sceneTarget, width, height);
+    checkpoint('background');
 
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
@@ -273,10 +423,14 @@ export function createRenderer(canvas, state) {
     drawParticles(flowParticles, 1);
     common(brushes, time, interaction);
     drawParticles(ringParticles, 2);
+    checkpoint('backdrop-particles');
 
-    gl.enable(gl.DEPTH_TEST);
-    gl.depthFunc(gl.LEQUAL);
-    gl.depthMask(true);
+    // 无可用深度附件时跳过深度测试，全息网格按半透明混合直接绘制
+    if (sceneTarget.hasDepth) {
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthFunc(gl.LEQUAL);
+      gl.depthMask(true);
+    }
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     common(hologram, time, interaction);
     gl.uniform3fv(hologram.uniform('uEye'), eye);
@@ -285,13 +439,17 @@ export function createRenderer(canvas, state) {
       gl.bindVertexArray(mesh.vertexArray);
       gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
     }
+    checkpoint('hologram-meshes');
 
-    gl.depthMask(false);
+    if (sceneTarget.hasDepth) gl.depthMask(false);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
     common(brushes, time, interaction);
     drawParticles(figureParticles, 0);
-    gl.depthMask(true);
-    gl.disable(gl.DEPTH_TEST);
+    checkpoint('figure-particles');
+    if (sceneTarget.hasDepth) {
+      gl.depthMask(true);
+      gl.disable(gl.DEPTH_TEST);
+    }
     gl.disable(gl.BLEND);
 
     gl.useProgram(bloom.handle);
@@ -306,12 +464,15 @@ export function createRenderer(canvas, state) {
     texture(bloom, 'uTexture', secondBloom.texture);
     gl.uniform2fv(bloom.uniform('uDirection'), [2 / bloomWidth, 0]);
     fullscreen(bloom, firstBloom, bloomWidth, bloomHeight);
+    checkpoint('bloom-passes');
 
     gl.useProgram(composite.handle);
     texture(composite, 'uTexture', sceneTarget.texture, 0);
     texture(composite, 'uBloom', firstBloom.texture, 1);
     scalar(composite, 'uHologram', state.hologram / 100);
     fullscreen(composite, null, width, height);
+    checkpoint('bloom-composite');
+    if (frameCount === 0) info.firstGlError = gl.getError();
     frameCount += 1;
     canvas.dataset.frames = String(frameCount);
     canvas.dataset.time = time.toFixed(3);
@@ -346,5 +507,24 @@ export function createRenderer(canvas, state) {
   canvas.dataset.engine = info.engine;
   canvas.dataset.particles = String(info.particles);
   resize();
+
+  // 默认帧缓冲（画布本身）探针：初始化期间加载遮罩不透明，用户看不到这次探测绘制。
+  // 若离屏目标全部可用而此处回读失败，说明画布表面本身在该驱动上不可写。
+  {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, Math.min(width, 64), Math.min(height, 64));
+    gl.disable(gl.BLEND);
+    gl.disable(gl.DEPTH_TEST);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(probeProgram.handle);
+    gl.bindVertexArray(probeVao);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    const canvasPixel = new Uint8Array(4);
+    gl.readPixels(Math.min(width, 32), Math.min(height, 32), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, canvasPixel);
+    info.defaultFramebufferProbe = { px: Array.from(canvasPixel), error: gl.getError() };
+    gl.bindVertexArray(null);
+  }
+
   return { render, resize, dispose, info };
 }

@@ -32,6 +32,24 @@ npm run dev
 部署时把 `index.html` 与 `src/` 放在静态站点的根目录即可；
 不需要构建步骤或后端。
 
+## 访问统计
+
+服务内置零依赖的第一方访问统计，不使用任何外部服务，也不向页面
+注入脚本。只有 HTML 文档请求（页面访问）会被记录，JS、CSS、图片等
+静态资源不产生记录。每次访问按天追加到
+`stats/visits-YYYY-MM-DD.jsonl`，每行一条 JSON，包含时间、IP、
+方法、路径、状态码、来源页（Referer）、接受语言和 User-Agent。
+经过反向代理时，取 `X-Forwarded-For` 的第一跳作为客户端 IP。
+
+统计面板地址为 **/admin/stats**（例如
+http://121.40.123.10:5173/admin/stats），无需登录或令牌，直接
+访问即可；展示总 PV / UV、今日数据、按日趋势、访问最多的 IP、
+热门页面和最近 50 次访问；加 `?format=json` 可获取 JSON 数据。
+
+注意面板对任何知道地址的人都是公开的，里面包含访客 IP 和
+User-Agent；如需限制访问，请在服务器或反向代理层加访问控制。
+`stats/` 已在 `.gitignore` 中，日志不会进入版本库。
+
 ## 交互
 
 | 操作 | 效果 |
@@ -110,7 +128,9 @@ npm run dev
 
 ```text
 index.html              页面、控制栏与作品介绍
-server.mjs              零依赖本地静态服务
+server.mjs              零依赖本地静态服务与访问统计面板
+stats-store.mjs         访问记录的写入、读取与 PV/UV 聚合
+stats/                  按天滚动的访问日志（JSONL，已 gitignore）
 src/main.js             输入、控件、动画时钟与生命周期
 src/state.js            设置验证、暂停计时与指针投影
 src/camera.js           自由相机、预设、边界与屏幕 / 世界投影

@@ -9,7 +9,8 @@ Starry Echo is an offline interactive artwork built with native JavaScript, WebG
 - `tests/`: unit, lifecycle, camera, and browser checks.
 - `docs/superpowers/`: design specifications and implementation plans.
 - `artifacts/`: generated browser screenshots; ignored by Git alongside `.cache/`.
-- `server.mjs`: dependency-free local static server.
+- `server.mjs`: dependency-free local static server with the public `/admin/stats` analytics dashboard.
+- `stats-store.mjs`: first-party visit logging (daily JSONL under `stats/`) and PV/UV aggregation; `stats/` is git-ignored.
 
 Visuals and audio are generated locally; there is no separate asset directory.
 
@@ -19,7 +20,7 @@ Use Node.js 20+ and a modern browser. Running the app requires no package instal
 
 - `npm run dev` or `npm start`: serve at `http://localhost:5173` or `http://<host-ip>:5173` over the LAN.
 - `$env:PORT = 8080`: set a different port in PowerShell before starting.
-- `npm test`: run the three configured suites with Node's built-in test runner.
+- `npm test`: run the explicitly configured suites with Node's built-in test runner.
 - `node --test tests/camera.test.mjs`: run a focused suite.
 - `npm run test:browser`: run interaction and camera browser checks against a running server.
 

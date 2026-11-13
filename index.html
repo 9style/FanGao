@@ -106,14 +106,16 @@
           <div class="slider-heading"><label for="hologram">全息 <span>LIGHT</span></label><output id="hologram-value" for="hologram">72</output></div>
           <input id="hologram" type="range" min="0" max="100" value="72" aria-label="全息强度" style="--fill:72%">
         </div>
-        <span class="dock-divider palette-divider" aria-hidden="true"></span>
-        <button id="palette" class="palette-button" type="button" aria-label="切换到霓虹色板" aria-pressed="false" title="切换色板">
-          <span class="palette-swatch" aria-hidden="true"><i></i><i></i></span>
-          <span id="palette-label">星夜色板<span>STARRY NIGHT</span></span>
-        </button>
-        <button id="reset" class="icon-button reset-button" type="button" aria-label="重置场景" title="重置 / R">
-          <svg class="icon"><use href="#icon-reset"/></svg>
-        </button>
+        <div class="dock-aux">
+          <span class="dock-divider palette-divider" aria-hidden="true"></span>
+          <button id="palette" class="palette-button" type="button" aria-label="切换到霓虹色板" aria-pressed="false" title="切换色板（色板会自动循环）">
+            <span class="palette-swatch" aria-hidden="true"><i></i><i></i></span>
+            <span id="palette-label">星夜色板<span>STARRY NIGHT</span></span>
+          </button>
+          <button id="reset" class="icon-button reset-button" type="button" aria-label="重置场景" title="重置 / R">
+            <svg class="icon"><use href="#icon-reset"/></svg>
+          </button>
+        </div>
       </section>
 
       <footer class="scene-footer">

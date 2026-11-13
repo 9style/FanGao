@@ -3,9 +3,11 @@ import { createState, updateSetting, advanceClock } from './state.js';
 import { cameraFrame, createView, flatCameraFrame, orbitView, panView, presetView, screenToWorld, zoomView } from './camera.js';
 import { createOrbitControls } from './orbit-controls.js';
 import { createRenderer } from './renderer.js';
+import { createFallback } from './fallback.js';
 import { createAmbientAudio } from './audio.js';
+import { createPaletteCycle, samplePaletteCycle, jumpPaletteCycle } from './palette-cycle.js';
 
-const canvas = document.querySelector('#artwork');
+let canvas = document.querySelector('#artwork');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const state = createState(reducedMotion.matches);
 const audio = createAmbientAudio();
@@ -23,6 +25,8 @@ let dirty = true;
 let animationFrame;
 let noticeTimeout;
 let ripples = 0;
+let paletteCycle = createPaletteCycle(0);
+let paletteDominant = 0;
 
 function notice(message, persistent = false) {
   clearTimeout(noticeTimeout);
@@ -54,6 +58,19 @@ function togglePause() {
   syncControls();
 }
 
+// 色板自动循环：每帧按渲染时钟采样混合值；仅在越过 50% 临界点时同步按钮标签，
+// 手动点按会提前把标签切到目标色板，临界点未到前不能被采样值翻回去
+function stepPalette(elapsed) {
+  const blend = samplePaletteCycle(paletteCycle, elapsed);
+  state.paletteBlend = blend;
+  const dominant = blend >= 0.5 ? 1 : 0;
+  if (dominant !== paletteDominant) {
+    paletteDominant = dominant;
+    state.palette = dominant;
+    syncControls();
+  }
+}
+
 function currentFrame() {
   const createFrame = renderer?.info.engine === 'canvas2d' ? flatCameraFrame : cameraFrame;
   return createFrame(view, canvas.clientWidth, canvas.clientHeight);
@@ -82,6 +99,8 @@ function restoreView() {
 
 function reset() {
   Object.assign(state, createState(reducedMotion.matches));
+  paletteCycle = createPaletteCycle(clock.elapsed || 0);
+  paletteDominant = 0;
   restoreView();
   interaction.ripple = [0, 0, 0, -99];
   ripples = 0;
@@ -126,7 +145,11 @@ for (const key of ['flow', 'hologram']) {
 }
 
 paletteButton.addEventListener('click', () => {
-  updateSetting(state, 'palette', state.palette ? 0 : 1);
+  const next = state.palette ? 0 : 1;
+  // 立即开始淡入目标色板，并重新计时：自动循环会在完整停留周期后继续
+  paletteCycle = jumpPaletteCycle(paletteCycle, clock.elapsed || 0, next);
+  state.palette = next;
+  state.paletteBlend = samplePaletteCycle(paletteCycle, clock.elapsed || 0);
   syncControls();
 });
 
@@ -214,20 +237,23 @@ window.addEventListener('resize', () => {
   dirty = true;
 });
 
-canvas.addEventListener('artwork-lost', () => {
+function handleLost() {
   updateSetting(state, 'paused', true);
   syncControls();
   document.querySelector('#signal-status').textContent = 'SIGNAL / LOST';
   notice('投影连接中断，请刷新页面重新唤醒星空。', true);
-});
-canvas.addEventListener('artwork-restored', () => {
+}
+function handleRestored() {
   notice('投影设备已恢复，请刷新页面重新初始化。', true);
-});
+}
+canvas.addEventListener('artwork-lost', handleLost);
+canvas.addEventListener('artwork-restored', handleRestored);
 
 function frame(now) {
   const active = !state.paused && !document.hidden;
   const time = advanceClock(clock, now, active);
   if (!document.hidden && (active || dirty)) {
+    stepPalette(clock.elapsed);
     interaction.pointer = interaction.pointer.map((component, axis) => mix(component, targetPointer[axis], 0.14));
     canvas.dataset.yaw = view.yaw.toFixed(3);
     canvas.dataset.pitch = view.pitch.toFixed(3);
@@ -241,8 +267,27 @@ function frame(now) {
 
 syncControls();
 syncView();
+let fallbackReason = null;
 try {
   renderer = createRenderer(canvas, state);
+} catch (error) {
+  // GPU 驱动拒绝 WebGL 帧缓冲等初始化失败：同一画布不能再创建 2D 上下文，更换画布后降级
+  console.error(error);
+  fallbackReason = String(error?.message || error);
+  canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();
+  const replacement = document.createElement('canvas');
+  replacement.id = 'artwork';
+  replacement.className = canvas.className;
+  replacement.tabIndex = canvas.tabIndex;
+  const ariaLabel = canvas.getAttribute('aria-label');
+  if (ariaLabel) replacement.setAttribute('aria-label', ariaLabel);
+  canvas.replaceWith(replacement);
+  canvas = replacement;
+  canvas.addEventListener('artwork-lost', handleLost);
+  canvas.addEventListener('artwork-restored', handleRestored);
+  renderer = createFallback(canvas, state);
+}
+try {
   orbitControls = createOrbitControls(canvas, view, {
     getFrame: currentFrame,
     canOrbit: () => renderer.info.engine === 'webgl',
@@ -262,11 +307,19 @@ try {
   animationFrame = requestAnimationFrame(frame);
   if (renderer.info.engine === 'canvas2d') {
     for (const id of ['free-view', 'view-side', 'view-back']) document.querySelector(`#${id}`).disabled = true;
-    notice('轻量二维模式：支持缩放与平移，三维环绕暂不可用。', true);
+    notice(
+      fallbackReason
+        ? '三维投影与当前浏览器 GPU 驱动不兼容，已切换轻量二维模式（技术详情见控制台）。'
+        : '轻量二维模式：支持缩放与平移，三维环绕暂不可用。',
+      true,
+    );
   }
 } catch (error) {
-  document.querySelector('#loading').innerHTML = `<span>投影暂时无法启动<span>请尝试更新浏览器或开启硬件加速。</span></span>`;
   console.error(error);
+  const detail = String(error?.message || error).replace(/[&<>]/g, character =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[character]);
+  document.querySelector('#loading').innerHTML =
+    `<span>投影暂时无法启动<span>请尝试更新浏览器或开启硬件加速。</span><span style="white-space:pre-wrap;text-align:left;font-family:monospace;font-size:12px;opacity:.85;margin-top:8px">技术详情：${detail}</span></span>`;
 }
 
 window.addEventListener('pagehide', event => {

@@ -1,4 +1,5 @@
 import { clamp, cross, lookAt, multiplyMatrices, normalize, perspective, subtract } from './math.js';
+import { isNarrowLayout, isPhonePortrait } from './device.js';
 
 const minimumDistance = 2.6;
 const maximumDistance = 22;
@@ -89,8 +90,12 @@ function safeDistance(target, direction, distance, offset) {
 export function cameraFrame(view, viewportWidth, viewportHeight) {
   const width = Math.max(1, viewportWidth);
   const height = Math.max(1, viewportHeight);
-  const offset = width < 700 ? [0.25, 0.15] : [1.65, 0.35];
-  const fov = (height < 500 ? 52 : width < 700 ? 46 : 37) * Math.PI / 180;
+  const phonePortrait = isPhonePortrait(width, height);
+  const narrow = isNarrowLayout(width, height);
+  // 手机竖屏：水平偏移归零让人物居中（桌面偏移会把人物推出窄屏右缘），仅保留轻微上移
+  const offset = phonePortrait ? [0, 0.12] : narrow ? [0.25, 0.15] : [1.65, 0.35];
+  // 竖屏手机加大垂直视场，等效拉远，避免人物在窄屏上显得过大
+  const fov = (height < 500 ? 52 : phonePortrait ? 54 : narrow ? 46 : 37) * Math.PI / 180;
   let target = view.active
     ? view.focus.map((component, axis) => component + view.pan[axis] + (axis < 2 ? offset[axis] : 0))
     : [0, 0.18, 0];
@@ -131,7 +136,7 @@ export function flatCameraFrame(view, viewportWidth, viewportHeight) {
   const scale = height / 8.9 * 11.8 / distance;
   const center = view.immersive
     ? [width / 2 - (view.focus[0] + view.pan[0]) * scale, height / 2 + (view.focus[1] + view.pan[1]) * scale]
-    : [(width < 700 ? width * 0.5 : width * 0.69) - view.pan[0] * scale, height * 0.53 + view.pan[1] * scale];
+    : [(isNarrowLayout(width, height) ? width * 0.5 : width * 0.69) - view.pan[0] * scale, height * 0.53 + view.pan[1] * scale];
   return {
     ...frame, flat: true, scale, center, width, height, distance,
     right: [1, 0, 0], up: [0, 1, 0],

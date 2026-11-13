@@ -1,7 +1,7 @@
 import { clamp } from './math.js';
 
 export function createState(reducedMotion = false) {
-  return { flow: 65, hologram: 72, palette: 0, paused: reducedMotion };
+  return { flow: 65, hologram: 72, palette: 0, paletteBlend: 0, paused: reducedMotion };
 }
 
 export function updateSetting(state, key, value) {

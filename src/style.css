@@ -77,6 +77,8 @@ h1 { font-family: "Songti SC", "Noto Serif CJK SC", "SimSun", Georgia, serif; fo
 .play-button { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex: 0 0 40px; border: 1px solid #b59b6755; color: #dfc58e; border-radius: 50%; background: rgb(200 167 108 / 7%); transition: background 0.2s; }
 .play-button:hover { background: rgb(200 167 108 / 16%); color: #f7d995; }
 .dock-divider { width: 1px; height: 31px; background: #6a7a982b; flex: 0 0 1px; }
+/* 手机端把色板与重置收进同一整行；桌面端 display:contents 使包装层透明、布局不变 */
+.dock-aux { display: contents; }
 .slider-control { width: 120px; flex: 0 0 120px; }
 .slider-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .slider-heading label { color: #b7becc; font-size: 10px; letter-spacing: 1px; }
@@ -161,7 +163,8 @@ dialog p { font-size: 11px; line-height: 2; letter-spacing: 0.6px; }
   .edition > span > span { letter-spacing: 0.4px; }
 }
 
-@media (max-width: 700px) {
+/* 触屏竖屏（含厂商浏览器以 980px 桌面视口渲染的手机）同样应用移动端布局 */
+@media (max-width: 700px), (pointer: coarse) and (orientation: portrait) {
   .experience { min-height: 480px; }
   .frame-line { inset: 12px; }
   .masthead { height: 91px; padding: 0 7%; }
@@ -188,37 +191,121 @@ dialog p { font-size: 11px; line-height: 2; letter-spacing: 0.6px; }
   .specimen-rule { width: 24px; margin-top: 13px; margin-bottom: 12px; }
   .signal { font-size: 5px; letter-spacing: 0.9px; }
   .signal i { width: 3px; height: 3px; }
-  .figure-caption { right: 8%; top: auto; bottom: 27%; font-size: 8px; line-height: 1.9; gap: 9px; }
-  .figure-caption > span > span { font-size: 7px; }
-  .caption-cross { font-size: 14px; margin-top: -4px; }
-  .control-dock { bottom: 91px; width: calc(100% - 48px); max-width: 420px; padding: 16px; gap: 16px; flex-wrap: wrap; border-radius: 13px; }
-  .view-toolbar { bottom: 224px; gap: 8px; padding: 8px 10px; max-width: calc(100% - 40px); }
-  .view-toolbar button { font-size: 8px; padding: 5px 3px; letter-spacing: 0; }
-  .view-mode > span { font-size: 14px; margin-right: 1px; }
-  .view-presets { gap: 2px; }
-  .play-button { width: 32px; height: 32px; flex-basis: 32px; }
-  .play-button .icon { width: 17px; height: 17px; }
-  .control-dock > .dock-divider { height: 27px; }
+  .figure-caption { display: none; }
+  .control-dock { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); width: calc(100% - 48px); max-width: 420px; padding: 12px 14px; gap: 12px; flex-wrap: wrap; border-radius: 13px; }
+  .view-toolbar { bottom: calc(214px + env(safe-area-inset-bottom, 0px)); gap: 10px; padding: 6px 10px; max-width: calc(100% - 40px); }
+  .view-toolbar button { font-size: 11px; min-height: 34px; min-width: 42px; padding: 6px 10px; letter-spacing: 0.5px; }
+  .view-mode > span { font-size: 17px; margin-right: 2px; }
+  /* 手机端收起预设视角组，只保留自由观察 / 恢复构图，减少对模型的遮挡 */
+  .view-presets, .view-toolbar .view-divider { display: none; }
+  .play-button { width: 42px; height: 42px; flex-basis: 42px; }
+  .play-button .icon { width: 21px; height: 21px; }
+  .control-dock > .dock-divider { height: 34px; }
   .slider-control { width: auto; flex: 1 1 70px; }
   .slider-heading { margin-bottom: 11px; }
-  .slider-heading label { font-size: 9px; }
+  .slider-heading label { font-size: 11px; }
   .slider-heading label span { display: none; }
-  .slider-heading output { font-size: 8px; }
+  .slider-heading output { font-size: 10px; }
+  input[type="range"] { height: 4px; }
+  input[type="range"]::-webkit-slider-thumb { height: 12px; width: 12px; }
+  input[type="range"]::-moz-range-thumb { height: 12px; width: 12px; }
   .palette-divider { display: none; }
-  .palette-button { width: calc(100% - 44px); padding-top: 9px; border-top: 1px solid #8598b326; flex-basis: auto; gap: 11px; }
-  #palette-label { font-size: 9px; display: flex; align-items: center; gap: 10px; }
-  #palette-label > span { display: inline; font-size: 6px; margin-top: 0; }
-  .palette-swatch { transform: scale(0.8); transform-origin: left center; width: 23px; height: 19px; }
-  .reset-button { border-top: 1px solid #8598b326; border-radius: 0; padding-top: 8px; margin-left: 0; }
-  .scene-footer { bottom: 28px; left: 8%; right: 8%; justify-content: center; }
+  /* 色板与重置并入同一整行，控制面板从三行压到两行，降低纵向占用 */
+  .dock-aux { display: flex; flex: 1 1 100%; align-items: center; gap: 12px; padding-top: 10px; border-top: 1px solid #8598b326; }
+  .palette-button { width: auto; flex: 1 1 auto; padding: 0; border: 0; gap: 11px; }
+  #palette-label { font-size: 11px; display: flex; align-items: center; gap: 10px; }
+  #palette-label > span { display: inline; font-size: 8px; margin-top: 0; }
+  .palette-swatch { transform: scale(0.95); transform-origin: left center; width: 23px; height: 19px; }
+  .reset-button { border: 0; border-radius: 0; padding: 0; margin-left: auto; min-width: 44px; min-height: 44px; }
+  .reset-button .icon { width: 19px; height: 19px; }
+  .scene-footer { bottom: calc(22px + env(safe-area-inset-bottom, 0px)); left: 8%; right: 8%; justify-content: center; }
   .edition, .particle-note { display: none; }
-  .interaction-hint { font-size: 8px; gap: 10px; }
-  .interaction-hint > span > span { font-size: 6px; letter-spacing: 1.3px; }
-  .hint-orbit { width: 15px; height: 15px; }
-  .hint-orbit::after { width: 4px; height: 4px; }
-  .notice { bottom: 276px; font-size: 8px; padding: 9px 13px; }
+  .interaction-hint { font-size: 10px; gap: 10px; }
+  .interaction-hint > span > span { font-size: 8px; letter-spacing: 1.3px; }
+  .hint-orbit { width: 17px; height: 17px; }
+  .hint-orbit::after { width: 5px; height: 5px; }
+  .notice { bottom: calc(276px + env(safe-area-inset-bottom, 0px)); font-size: 11px; padding: 11px 16px; }
   dialog { padding: 35px 25px; }
   dialog h2 { font-size: 30px; }
+}
+
+/* 厂商浏览器以 980px 桌面视口渲染竖屏手机：对移动端 UI 整体补偿放大，
+   保证物理尺寸下文字可读、按钮达到易点按的触控尺寸 */
+@media (pointer: coarse) and (orientation: portrait) and (min-width: 701px) {
+  .frame-line { inset: 20px; }
+  .masthead { height: 150px; padding: 0 6%; }
+  .brand { gap: 16px; }
+  .brand-emblem { width: 54px; height: 54px; }
+  .brand-wordmark { font-size: 19px; letter-spacing: 3px; }
+  .brand-wordmark > span { font-size: 13px; margin-top: 10px; }
+  .header-actions { gap: 14px; }
+  .header-actions .icon-button { width: 58px; height: 58px; }
+  .header-actions .icon { width: 30px; height: 30px; }
+  .about-button { font-size: 16px; }
+  .about-button span { font-size: 24px; }
+
+  .editorial { left: 7%; top: 13%; }
+  .eyebrow { font-size: 12px; gap: 14px; }
+  .small-line { width: 26px; }
+  h1 { font-size: 78px; }
+  .english-title { font-size: 24px; }
+  .specimen-note { top: 14%; right: 7%; }
+  .specimen-index { font-size: 42px; }
+  .specimen-label { font-size: 12px; }
+  .specimen-rule { width: 42px; }
+  .signal { font-size: 11px; }
+  .signal i { width: 7px; height: 7px; }
+
+  .view-toolbar {
+    bottom: calc(328px + env(safe-area-inset-bottom, 0px));
+    gap: 16px; padding: 12px 20px; border-radius: 14px;
+  }
+  .view-toolbar button { font-size: 19px; min-height: 60px; min-width: 64px; padding: 10px 18px; letter-spacing: 0.5px; border-radius: 10px; }
+  .view-mode > span { font-size: 30px; }
+
+  .control-dock {
+    bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+    width: calc(100% - 72px); max-width: none; padding: 20px 26px; gap: 18px;
+    border-radius: 22px;
+  }
+  .play-button { width: 76px; height: 76px; flex-basis: 76px; }
+  .play-button .icon { width: 34px; height: 34px; }
+  .control-dock > .dock-divider { height: 58px; width: 2px; }
+  .slider-control { flex: 1 1 200px; }
+  .slider-heading { margin-bottom: 12px; }
+  .slider-heading label { font-size: 20px; }
+  .slider-heading output { font-size: 18px; }
+  input[type="range"] { height: 7px; }
+  input[type="range"]::-webkit-slider-thumb { height: 22px; width: 22px; }
+  input[type="range"]::-moz-range-thumb { height: 22px; width: 22px; }
+  .palette-swatch { transform: scale(1.7); transform-origin: left center; margin-right: 14px; }
+  #palette-label { font-size: 19px; gap: 16px; }
+  #palette-label > span { font-size: 14px; }
+  .reset-button { width: 56px; height: 58px; }
+  .reset-button .icon { width: 28px; height: 28px; }
+
+  .scene-footer { bottom: calc(44px + env(safe-area-inset-bottom, 0px)); }
+  .interaction-hint { font-size: 18px; gap: 16px; }
+  .interaction-hint > span > span { font-size: 13px; }
+  .hint-orbit { width: 28px; height: 28px; }
+  .hint-orbit::after { width: 9px; height: 9px; }
+  .notice { bottom: calc(430px + env(safe-area-inset-bottom, 0px)); font-size: 17px; padding: 16px 26px; border-radius: 28px; }
+
+  .loading { font-size: 20px; gap: 28px; }
+  .loading > span > span { font-size: 12px; }
+  .loading-orbit { width: 56px; height: 56px; }
+
+  dialog { max-width: min(900px, calc(100vw - 60px)); padding: 60px 44px; }
+  dialog h2 { font-size: 58px; }
+  dialog p { font-size: 17px; }
+  dialog .eyebrow { font-size: 12px; }
+  .about-details > div { grid-template-columns: 140px 1fr; font-size: 16px; gap: 18px; }
+  .credits-label { font-size: 12px; }
+  .credits p { font-size: 15px; }
+  .reference-links { font-size: 15px; }
+  .dialog-footnote { font-size: 12px; }
+  .dialog-close { width: 52px; height: 52px; }
+  .dialog-close .icon { width: 26px; height: 26px; }
 }
 
 @media (max-height: 650px) and (max-width: 700px) {
@@ -227,10 +314,10 @@ dialog p { font-size: 11px; line-height: 2; letter-spacing: 0.6px; }
   h1 { font-size: 31px; margin-top: 12px; }
   .english-title { display: none; }
   .control-dock { bottom: 64px; padding: 11px 15px; gap: 12px 15px; }
-  .view-toolbar { bottom: 188px; }
+  .view-toolbar { bottom: 200px; }
   .scene-footer { bottom: 17px; }
   .figure-caption { display: none; }
-  .notice { bottom: 230px; }
+  .notice { bottom: 292px; }
 }
 
 @media (max-height: 500px) and (orientation: landscape) {
@@ -250,7 +337,8 @@ dialog p { font-size: 11px; line-height: 2; letter-spacing: 0.6px; }
   .palette-button { width: auto; flex: 0 0 auto; border: 0; padding: 0; }
   #palette-label { display: block; font-size: 8px; }
   #palette-label > span { display: block; font-size: 6px; margin-top: 5px; }
-  .reset-button { border: 0; padding: 0; }
+  .dock-aux { display: contents; flex: none; padding: 0; border: 0; gap: 0; }
+  .reset-button { border: 0; padding: 0; min-width: 0; min-height: 0; margin-left: -6px; }
   .scene-footer { bottom: 16px; justify-content: center; }
   .edition, .particle-note { display: none; }
   .notice { bottom: 161px; }
