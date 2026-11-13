@@ -8,6 +8,9 @@ import {
   brushVertex, brushFragment, bloomFragment, compositeFragment,
 } from './shaders.js';
 
+const referenceHeight = 1716;
+const brushWorldSize = 2 * 11.8 * Math.tan(54 * Math.PI / 360) / referenceHeight;
+
 function createFlowParticles(count) {
   const random = createRandom(1889);
   const centers = [[-4.4, 2.5, -5], [1.0, 2.7, -5.5], [5.3, 1.5, -5], [-1.8, -0.8, -6], [5.0, -1.0, -4.5]];
@@ -303,7 +306,8 @@ void main() { o = vec4(1.0); }`);
 
   function resize() {
     if (lost || disposed) return;
-    const ratio = Math.min(devicePixelRatio || 1, narrow() ? 1 : 1.5) * resolutionScale;
+    const pixelLimit = narrow() ? 980 / Math.max(1, canvas.clientWidth) : 1.5;
+    const ratio = Math.min(devicePixelRatio || 1, pixelLimit) * resolutionScale;
     width = Math.max(1, Math.round(canvas.clientWidth * ratio));
     height = Math.max(1, Math.round(canvas.clientHeight * ratio));
     canvas.width = width;
@@ -343,7 +347,10 @@ void main() { o = vec4(1.0); }`);
     scalar(activeProgram, 'uPalette', state.paletteBlend ?? state.palette);
     scalar(activeProgram, 'uYaw', 0);
     gl.uniform2fv(activeProgram.uniform('uOffset'), offset);
-    gl.uniform2fv(activeProgram.uniform('uResolution'), [width, height]);
+    const brushProjection = brushWorldSize / Math.tan(frame.fov / 2);
+    gl.uniform2fv(activeProgram.uniform('uBrushScale'), [
+      brushProjection * canvas.clientHeight / canvas.clientWidth, brushProjection,
+    ]);
     gl.uniform3fv(activeProgram.uniform('uPointer'), interaction.pointer);
     gl.uniform4fv(activeProgram.uniform('uRipple'), interaction.ripple);
     gl.uniformMatrix4fv(activeProgram.uniform('uViewProjection'), false, viewProjection);
@@ -454,15 +461,15 @@ void main() { o = vec4(1.0); }`);
 
     gl.useProgram(bloom.handle);
     texture(bloom, 'uTexture', sceneTarget.texture);
-    gl.uniform2fv(bloom.uniform('uDirection'), [1 / width, 0]);
+    gl.uniform2fv(bloom.uniform('uDirection'), [height / width / referenceHeight, 0]);
     scalar(bloom, 'uExtract', 1);
     fullscreen(bloom, firstBloom, bloomWidth, bloomHeight);
     texture(bloom, 'uTexture', firstBloom.texture);
-    gl.uniform2fv(bloom.uniform('uDirection'), [0, 2 / bloomHeight]);
+    gl.uniform2fv(bloom.uniform('uDirection'), [0, 8 / referenceHeight]);
     scalar(bloom, 'uExtract', 0);
     fullscreen(bloom, secondBloom, bloomWidth, bloomHeight);
     texture(bloom, 'uTexture', secondBloom.texture);
-    gl.uniform2fv(bloom.uniform('uDirection'), [2 / bloomWidth, 0]);
+    gl.uniform2fv(bloom.uniform('uDirection'), [8 * height / width / referenceHeight, 0]);
     fullscreen(bloom, firstBloom, bloomWidth, bloomHeight);
     checkpoint('bloom-passes');
 

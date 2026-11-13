@@ -166,7 +166,7 @@ layout(location = 2) in vec3 aNormal;
 layout(location = 3) in vec4 aSeed;
 uniform mat4 uViewProjection;
 uniform vec2 uOffset;
-uniform vec2 uResolution;
+uniform vec2 uBrushScale;
 uniform vec3 uPointer;
 uniform vec4 uRipple;
 uniform float uTime;
@@ -235,7 +235,7 @@ void main() {
   float sine = sin(angle);
   vec2 brush = aCorner * vec2(size * 1.6, size * 0.42);
   brush = mat2(cosine, -sine, sine, cosine) * brush;
-  projected.xy += brush * 2.0 / uResolution * projected.w;
+  projected.xy += brush * uBrushScale;
   gl_Position = projected;
   vUv = aCorner;
   vGold = gold;

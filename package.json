@@ -8,7 +8,7 @@
     "dev": "node server.mjs",
     "start": "node server.mjs",
     "test": "node --test tests/core.test.mjs tests/lifecycle.test.mjs tests/camera.test.mjs tests/device.test.mjs tests/palette-cycle.test.mjs tests/stats.test.mjs",
-    "test:browser": "node tests/browser.test.mjs && node tests/view.browser.mjs"
+    "test:browser": "node tests/browser.test.mjs && node tests/view.browser.mjs && node tests/render.browser.mjs"
   },
   "engines": {
     "node": ">=20"

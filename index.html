@@ -50,8 +50,8 @@
 
       <section class="editorial" aria-labelledby="artwork-title">
         <div class="eyebrow"><span class="small-line"></span>WHERE ART MEETS THE IMPOSSIBLE</div>
-        <h1 id="artwork-title">星夜，<br>为你<span class="title-accent">而流。</span></h1>
-        <p class="english-title">Somewhere between<br>a memory and a dream.</p>
+        <h1 id="artwork-title">让星夜，<span class="title-accent">回响。</span></h1>
+        <p class="english-title" lang="en">Somewhere between a memory and a dream.</p>
         <p class="intro">一束来自未来的光，<br>落进了 1889 年的夜空。</p>
         <div class="artwork-signature">
           <span class="signature-line"></span>
@@ -78,45 +78,47 @@
 
       <div id="notice" class="notice" role="status" aria-live="polite"></div>
 
-      <section class="view-toolbar" aria-label="三维观察控制">
-        <button id="free-view" class="view-mode" type="button" aria-pressed="false" title="切换自由观察 / 原始构图">
-          <span aria-hidden="true">◎</span> 自由观察
-        </button>
-        <span class="view-divider" aria-hidden="true"></span>
-        <div class="view-presets" role="group" aria-label="预设视角">
-          <button id="view-front" type="button" aria-pressed="false">正面</button>
-          <button id="view-side" type="button" aria-pressed="false">侧面</button>
-          <button id="view-back" type="button" aria-pressed="false">背面</button>
-          <button id="view-face" type="button" aria-pressed="false">特写</button>
-        </div>
-        <span class="view-divider" aria-hidden="true"></span>
-        <button id="view-home" type="button" title="只恢复视角，保留当前效果 / Home">恢复构图</button>
-      </section>
+      <div class="controls-panel">
+        <section class="view-toolbar" aria-label="三维观察控制">
+          <button id="free-view" class="view-mode" type="button" aria-pressed="false" title="切换自由观察 / 原始构图">
+            <span aria-hidden="true">◎</span> 自由观察
+          </button>
+          <span class="view-divider" aria-hidden="true"></span>
+          <div class="view-presets" role="group" aria-label="预设视角">
+            <button id="view-front" type="button" aria-pressed="false">正面</button>
+            <button id="view-side" type="button" aria-pressed="false">侧面</button>
+            <button id="view-back" type="button" aria-pressed="false">背面</button>
+            <button id="view-face" type="button" aria-pressed="false">特写</button>
+          </div>
+          <span class="view-divider" aria-hidden="true"></span>
+          <button id="view-home" type="button" title="只恢复视角，保留当前效果 / Home">恢复构图</button>
+        </section>
 
-      <section class="control-dock" aria-label="艺术效果控制">
-        <button id="pause" class="play-button" type="button" aria-label="暂停动画" aria-pressed="false" title="暂停 / 空格">
-          <svg class="icon"><use href="#icon-pause"/></svg>
-        </button>
-        <span class="dock-divider" aria-hidden="true"></span>
-        <div class="slider-control">
-          <div class="slider-heading"><label for="flow">星流 <span>FLOW</span></label><output id="flow-value" for="flow">65</output></div>
-          <input id="flow" type="range" min="0" max="100" value="65" aria-label="星流强度" style="--fill:65%">
-        </div>
-        <div class="slider-control">
-          <div class="slider-heading"><label for="hologram">全息 <span>LIGHT</span></label><output id="hologram-value" for="hologram">72</output></div>
-          <input id="hologram" type="range" min="0" max="100" value="72" aria-label="全息强度" style="--fill:72%">
-        </div>
-        <div class="dock-aux">
-          <span class="dock-divider palette-divider" aria-hidden="true"></span>
-          <button id="palette" class="palette-button" type="button" aria-label="切换到霓虹色板" aria-pressed="false" title="切换色板（色板会自动循环）">
-            <span class="palette-swatch" aria-hidden="true"><i></i><i></i></span>
-            <span id="palette-label">星夜色板<span>STARRY NIGHT</span></span>
+        <section class="control-dock" aria-label="艺术效果控制">
+          <button id="pause" class="play-button" type="button" aria-label="暂停动画" aria-pressed="false" title="暂停 / 空格">
+            <svg class="icon"><use href="#icon-pause"/></svg>
           </button>
-          <button id="reset" class="icon-button reset-button" type="button" aria-label="重置场景" title="重置 / R">
-            <svg class="icon"><use href="#icon-reset"/></svg>
-          </button>
-        </div>
-      </section>
+          <span class="dock-divider" aria-hidden="true"></span>
+          <div class="slider-control">
+            <div class="slider-heading"><label for="flow">星流 <span>FLOW</span></label><output id="flow-value" for="flow">65</output></div>
+            <input id="flow" type="range" min="0" max="100" value="65" aria-label="星流强度" style="--fill:65%">
+          </div>
+          <div class="slider-control">
+            <div class="slider-heading"><label for="hologram">全息 <span>LIGHT</span></label><output id="hologram-value" for="hologram">72</output></div>
+            <input id="hologram" type="range" min="0" max="100" value="72" aria-label="全息强度" style="--fill:72%">
+          </div>
+          <div class="dock-aux">
+            <span class="dock-divider palette-divider" aria-hidden="true"></span>
+            <button id="palette" class="palette-button" type="button" aria-label="切换到霓虹色板" aria-pressed="false" title="切换色板（色板会自动循环）">
+              <span class="palette-swatch" aria-hidden="true"><i></i><i></i></span>
+              <span id="palette-label">星夜色板<span>STARRY NIGHT</span></span>
+            </button>
+            <button id="reset" class="icon-button reset-button" type="button" aria-label="重置场景" title="重置 / R">
+              <svg class="icon"><use href="#icon-reset"/></svg>
+            </button>
+          </div>
+        </section>
+      </div>
 
       <footer class="scene-footer">
         <div class="edition"><span class="edition-number">01</span><span>THE IMPOSSIBLE COLLECTION<span>A DIGITAL ART STUDY · 2026</span></span></div>
@@ -133,6 +135,12 @@
       <div class="eyebrow">NOT QUITE REAL. NOT QUITE A DREAM.</div>
       <h2 id="about-title">把未来，<br>画进星夜。</h2>
       <p>《星夜回声》是一项交互艺术实验：让《银翼杀手 2049》中 Joi 的全息视觉语言，与梵高《星月夜》的蓝色旋涡和金色笔触相遇。</p>
+      <section class="about-copy" aria-labelledby="about-copy-title">
+        <h3 id="about-copy-title">作品寄语</h3>
+        <p class="about-quote" lang="en">Somewhere between<br>a memory and a dream.</p>
+        <p class="about-attribution" lang="en">WHERE ART MEETS THE IMPOSSIBLE<br>VAN GOGH × HOLOGRAPHIC FUTURES</p>
+        <p>她不是幻影。<br>只是星光的另一种形状。</p>
+      </section>
       <dl class="about-details">
         <div><dt>自由观察</dt><dd>左键拖动 360° 环绕，上下拖动俯仰，滚轮缩放；右键或 Shift＋拖动平移。手机单指环绕，双指缩放和平移。视角栏支持正面、侧面、背面与面部特写。</dd></div>
         <div><dt>触碰星空</dt><dd>移动鼠标扰动粒子；点击或轻触释放涟漪。普通拖动保留构图与文案；点击“自由观察”或预设视角才居中并淡出标题。恢复构图只还原相机，保留色板、强度和暂停状态。</dd></div>
